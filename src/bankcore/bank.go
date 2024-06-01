@@ -44,7 +44,9 @@ func (a *Account) Statement() string {
 	return fmt.Sprintf("%v - %v - %v", a.Number, a.Name, a.Balance)
 }
 
-// TODO 匿名字段好像可以集成方法，但不支持函数
+// TODO 匿名字段好像可以继承方法，但不支持函数
+// 匿名嵌入允许你访问嵌入类型的方法和字段，但并不会改变类型
+// 和java中的继承相似，但不是继承
 func (a *Account) Transfer(amount float64, toAccountPtr *Account) error {
 	if amount < 0 {
 		return errors.New("amount must be greater than zero")
