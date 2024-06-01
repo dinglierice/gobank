@@ -2,28 +2,65 @@ package main
 
 import (
 	"bankcore"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-var accounts = map[float64]*bankcore.Account{}
+//map[float64]*CustomAccount{} 创建了一个空的 accounts 映射，其中键的类型为 float64，值的类型为 *CustomAccount
+var accounts = map[float64]*CustomAccount{}
 
 func main() {
-	accounts[1001] = &bankcore.Account{
-		Customer: bankcore.Customer{
-			Name:    "John",
-			Address: "Los Angeles, California",
-			Phone:   "(213) 555 0147",
+	accounts[1001] = &CustomAccount{
+		Account: &bankcore.Account{
+			Customer: bankcore.Customer{
+				Name:    "John",
+				Address: "Los Angeles, California",
+				Phone:   "(213) 555 0147",
+			},
+			Number: 1001,
 		},
-		Number: 1001,
 	}
 
 	http.HandleFunc("/statement", statement)
 	http.HandleFunc("/deposit", deposit)
 	http.HandleFunc("/withdraw", withdraw)
+	http.HandleFunc("/transfer", transfer)
 	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+func transfer(writer http.ResponseWriter, request *http.Request) {
+	numberqs := request.URL.Query().Get("number")
+	amountqs := request.URL.Query().Get("amount")
+	toAccountqs := request.URL.Query().Get("dest")
+
+	if numberqs == "" {
+		fmt.Fprintf(writer, "Account number is missing!")
+		return
+	}
+
+	if number, err := strconv.ParseFloat(numberqs, 64); err != nil {
+		fmt.Fprintf(writer, "Account number is invalid!")
+	} else if amount, err := strconv.ParseFloat(amountqs, 64); err != nil {
+		fmt.Fprintf(writer, "Account amount is invalid!")
+	} else if toAccount, err := strconv.ParseFloat(toAccountqs, 64); err != nil {
+		fmt.Fprintf(writer, "Account number is invalid!")
+	} else {
+		if accountFrom, ok := accounts[number]; !ok {
+			fmt.Fprintf(writer, "Account number is invalid!")
+		} else if accountTo, ok := accounts[toAccount]; !ok {
+			fmt.Fprintf(writer, "Account number is invalid!")
+		} else {
+			err := accountFrom.Transfer(amount, accountTo.Account)
+			if err != nil {
+				fmt.Fprintf(writer, "transfer is invalid!")
+			} else {
+				fmt.Fprintf(writer, accountFrom.Statement())
+			}
+		}
+	}
 }
 
 func statement(w http.ResponseWriter, req *http.Request) {
@@ -41,7 +78,7 @@ func statement(w http.ResponseWriter, req *http.Request) {
 		if !ok {
 			fmt.Fprintf(w, "Account with number %v can't be found!", number)
 		} else {
-			fmt.Fprintf(w, account.Statement())
+			json.NewEncoder(w).Encode(bankcore.Statement(account))
 		}
 	}
 }
@@ -98,4 +135,18 @@ func withdraw(w http.ResponseWriter, req *http.Request) {
 			fmt.Fprintf(w, "Account with amount %v successfully withdrawn!", amount)
 		}
 	}
+}
+
+
+type CustomAccount struct {
+	*bankcore.Account
+}
+
+func (c *CustomAccount) Statement() string {
+	jsonObj, err := json.Marshal(c)
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(jsonObj)
 }

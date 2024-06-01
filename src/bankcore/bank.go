@@ -43,3 +43,34 @@ func (a *Account) Withdraw(amount float64) error {
 func (a *Account) Statement() string {
 	return fmt.Sprintf("%v - %v - %v", a.Number, a.Name, a.Balance)
 }
+
+// TODO 匿名字段好像可以集成方法，但不支持函数
+func (a *Account) Transfer(amount float64, toAccountPtr *Account) error {
+	if amount < 0 {
+		return errors.New("amount must be greater than zero")
+	}
+	if a.Balance < amount {
+		return errors.New("balance must be greater than zero")
+	}
+	err := a.Withdraw(amount)
+	if err != nil {
+		return err
+	}
+	err = toAccountPtr.Deposit(amount)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Bank /**
+type Bank interface {
+	Statement() string
+}
+
+// Statement 接收接口作为函数/**
+func Statement(b Bank) string {
+	return b.Statement()
+}
+
+
